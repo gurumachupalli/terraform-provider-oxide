@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/oxidecomputer/oxide.go/oxide"
@@ -43,7 +44,7 @@ type siloResourceModel struct {
 	ID               types.String                `tfsdk:"id"`
 	IdentityMode     types.String                `tfsdk:"identity_mode"`
 	// MappedFleetRoles types.Map					 `tfsdk:"mapped_fleet_roles"`
-	MappedFleetRoles map[string][]fleetRoleModel `tfsdk:"mapped_fleet_roles"`
+	MappedFleetRoles map[string][]string `tfsdk:"mapped_fleet_roles"`
 	Name             types.String                `tfsdk:"name"`
 	Quotas           quotaResourceModel          `tfsdk:"quotas"`
 	TlsCertificates  []certificateCreateModel    `tfsdk:"tls_certificates"`
@@ -122,6 +123,9 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 							Optional:    true,
 							Description: "List of Fleet roles associated with the Silo role.",
 							ElementType: types.StringType,
+							PlanModifiers: []planmodifier.List{
+								listplanmodifier.RequiresReplace(),
+							},
 						},
 					},
 				},
@@ -161,22 +165,37 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 						"cert": schema.StringAttribute{
 							Description: "PEM-formatted string containing public certificate chain.",
 							Required:    true,
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.RequiresReplace(),
+							},
 						},
 						"description": schema.StringAttribute{
 							Description: "Certificate description.",
 							Required:    true,
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.RequiresReplace(),
+							},
 						},
 						"key": schema.StringAttribute{
 							Description: "PEM-formatted string containing private key.",
 							Required:    true,
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.RequiresReplace(),
+							},
 						},
 						"name": schema.StringAttribute{
 							Description: "Name associated to the certificate.",
 							Required:    true,
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.RequiresReplace(),
+							},
 						},
 						"service": schema.StringAttribute{
 							Description: "Service using this certificate.",
 							Required:    true,
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.RequiresReplace(),
+							},
 						},
 					},
 				},
@@ -203,13 +222,13 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 	}
 }
 
-func siloCreateMappedFleetRolesModel(mappedFleetRoles map[string][]fleetRoleModel) map[string][]oxide.FleetRole {
+func siloCreateMappedFleetRolesModel(mappedFleetRoles map[string][]string) map[string][]oxide.FleetRole {
 	var model map[string][]oxide.FleetRole = make(map[string][]oxide.FleetRole)
 
 	for key, fleetRoleModels := range mappedFleetRoles {
 		var roles []oxide.FleetRole
 		for _, frm := range fleetRoleModels {
-			roles = append(roles, oxide.FleetRole(frm.FleetRole.ValueString()))
+			roles = append(roles, oxide.FleetRole(frm))
 		}
 		model[key] = roles
 	}
@@ -347,14 +366,12 @@ func (r *siloResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	}
 }
 
-func stateMappedFleetRolesModel(mappedFleetRoles map[string][]oxide.FleetRole) map[string][]fleetRoleModel {
-	model := make(map[string][]fleetRoleModel)
+func stateMappedFleetRolesModel(mappedFleetRoles map[string][]oxide.FleetRole) map[string][]string {
+	model := make(map[string][]string)
 	for key, roles := range mappedFleetRoles {
-		var modelRoles []fleetRoleModel
+		var modelRoles []string
 		for _, role := range roles {
-			modelRoles = append(modelRoles, fleetRoleModel{
-				FleetRole: types.StringValue(string(role)), // Use the StringValue function
-			})
+			modelRoles = append(modelRoles, string(role))
 		}
 		model[key] = modelRoles
 	}
@@ -392,4 +409,62 @@ func (r *siloResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		}
 	}
 	tflog.Trace(ctx, fmt.Sprintf("deleted silo with ID: %v", state.ID.ValueString()), map[string]any{"success": true})
+}
+
+// Update updates the resource and sets the updated Terraform state on success.
+func (r *siloResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan siloResourceModel
+	var state siloResourceModel
+
+	// Read Terraform plan data into the plan model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Read Terraform prior state data into the state model to retrieve ID
+	// which is a computed attribute, so it won't show up in the plan.
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updateTimeout, diags := plan.Timeouts.Update(ctx, defaultTimeout())
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
+
+	siloQuotasParams := oxide.SiloQuotasUpdateParams{
+		Silo: oxide.NameOrId(state.ID.ValueString()),
+		Body: &oxide.SiloQuotasUpdate{
+			Cpus: int(plan.Quotas.Cpus.ValueInt64()),
+			Memory: oxide.ByteCount(plan.Quotas.Memory.ValueInt64()),
+			Storage: oxide.ByteCount(plan.Quotas.Storage.ValueInt64()),
+		},
+	}
+	siloQuotas, err := r.client.SiloQuotasUpdate(ctx, siloQuotasParams)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error updating silo quotas",
+			"API error: "+err.Error(),
+		)
+		return
+	}
+
+	tflog.Trace(ctx, fmt.Sprintf("updated silo with ID: %v", siloQuotas.SiloId), map[string]any{"success": true})
+
+	// Map response body to schema and populate Computed attribute values
+	plan.ID = types.StringValue(siloQuotas.SiloId)
+	plan.Quotas.Cpus = types.Int64Value(plan.Quotas.Cpus.ValueInt64())
+	plan.Quotas.Memory = types.Int64Value(plan.Quotas.Memory.ValueInt64())
+	plan.Quotas.Storage = types.Int64Value(plan.Quotas.Storage.ValueInt64())
+
+	// Save plan into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
