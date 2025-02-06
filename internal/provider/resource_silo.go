@@ -23,13 +23,13 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = (*snapshotResource)(nil)
-	_ resource.ResourceWithConfigure = (*snapshotResource)(nil)
+	_ resource.Resource              = (*siloResource)(nil)
+	_ resource.ResourceWithConfigure = (*siloResource)(nil)
 )
 
 // NewSiloResource is a helper function to simplify the provider implementation.
 func NewSiloResource() resource.Resource {
-	return &snapshotResource{}
+	return &siloResource{}
 }
 
 // siloResource is the resource implementation.
