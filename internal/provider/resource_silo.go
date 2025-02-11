@@ -9,14 +9,15 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	// "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	// "github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/oxidecomputer/oxide.go/oxide"
 )
@@ -114,21 +115,10 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 					boolplanmodifier.RequiresReplaceIfConfigured(),
 				},
 			},
-			"mapped_fleet_roles": schema.MapNestedAttribute{
+			"mapped_fleet_roles": schema.MapAttribute{
 				Optional:    true,
 				Description: "Mapped Fleet Roles for the Silo.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"roles": schema.ListAttribute{
-							Optional:    true,
-							Description: "List of Fleet roles associated with the Silo role.",
-							ElementType: types.StringType,
-							PlanModifiers: []planmodifier.List{
-								listplanmodifier.RequiresReplace(),
-							},
-						},
-					},
-				},
+				ElementType: types.ListType{ElemType: types.StringType},
 			},
 			"name": schema.StringAttribute{
 				Required:    true,
