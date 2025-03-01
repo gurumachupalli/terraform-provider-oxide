@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	// "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
 	// "github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/oxidecomputer/oxide.go/oxide"
@@ -39,19 +41,19 @@ type siloResource struct {
 }
 
 type siloResourceModel struct {
-	AdminGroupName   types.String                `tfsdk:admin_group_name`
-	Description      types.String                `tfsdk:"description"`
-	Discoverable     types.Bool                  `tfsdk:"discoverable"`
-	ID               types.String                `tfsdk:"id"`
-	IdentityMode     types.String                `tfsdk:"identity_mode"`
+	AdminGroupName types.String `tfsdk:"admin_group_name"`
+	Description    types.String `tfsdk:"description"`
+	Discoverable   types.Bool   `tfsdk:"discoverable"`
+	ID             types.String `tfsdk:"id"`
+	IdentityMode   types.String `tfsdk:"identity_mode"`
 	// MappedFleetRoles types.Map					 `tfsdk:"mapped_fleet_roles"`
-	MappedFleetRoles map[string][]string `tfsdk:"mapped_fleet_roles"`
-	Name             types.String                `tfsdk:"name"`
-	Quotas           quotaResourceModel          `tfsdk:"quotas"`
-	TlsCertificates  []certificateCreateModel    `tfsdk:"tls_certificates"`
-	Timeouts         timeouts.Value              `tfsdk:"timeouts"`
-	TimeCreated      types.String                `tfsdk:"time_created"`
-	TimeModified     types.String                `tfsdk:"time_modified"`
+	MappedFleetRoles map[string][]string      `tfsdk:"mapped_fleet_roles"`
+	Name             types.String             `tfsdk:"name"`
+	Quotas           quotaResourceModel       `tfsdk:"quotas"`
+	TlsCertificates  []certificateCreateModel `tfsdk:"tls_certificates"`
+	Timeouts         timeouts.Value           `tfsdk:"timeouts"`
+	TimeCreated      types.String             `tfsdk:"time_created"`
+	TimeModified     types.String             `tfsdk:"time_modified"`
 }
 
 type fleetRoleModel struct {
@@ -127,23 +129,21 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"quotas": schema.MapNestedAttribute{
+			"quotas": schema.SingleNestedAttribute{
 				Required:    true,
 				Description: "Limits the amount of provisionable CPU, memory, and storage in the Silo.",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"cpus": schema.Int64Attribute{
-							Required:    true,
-							Description: "Amount of virtual CPUs available for running instances in the Silo.",
-						},
-						"storage": schema.Int64Attribute{
-							Required:    true,
-							Description: "Amount of RAM (in bytes) available for running instances in the Silo.",
-						},
-						"memory": schema.Int64Attribute{
-							Required:    true,
-							Description: "Amount of storage (in bytes) available for disks or snapshots.",
-						},
+				Attributes: map[string]schema.Attribute{
+					"cpus": schema.Int64Attribute{
+						Required:    true,
+						Description: "Amount of virtual CPUs available for running instances in the Silo.",
+					},
+					"memory": schema.Int64Attribute{
+						Required:    true,
+						Description: "Amount of RAM (in bytes) available for running instances in the Silo.",
+					},
+					"storage": schema.Int64Attribute{
+						Required:    true,
+						Description: "Amount of storage (in bytes) available for disks or snapshots.",
 					},
 				},
 			},
@@ -430,8 +430,8 @@ func (r *siloResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	siloQuotasParams := oxide.SiloQuotasUpdateParams{
 		Silo: oxide.NameOrId(state.ID.ValueString()),
 		Body: &oxide.SiloQuotasUpdate{
-			Cpus: int(plan.Quotas.Cpus.ValueInt64()),
-			Memory: oxide.ByteCount(plan.Quotas.Memory.ValueInt64()),
+			Cpus:    int(plan.Quotas.Cpus.ValueInt64()),
+			Memory:  oxide.ByteCount(plan.Quotas.Memory.ValueInt64()),
 			Storage: oxide.ByteCount(plan.Quotas.Storage.ValueInt64()),
 		},
 	}
