@@ -9,6 +9,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+
 	// "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -16,7 +18,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	// "github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -207,6 +211,17 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 			"id": schema.StringAttribute{
 				Computed:    true,
 				Description: "Unique, immutable, system-controlled identifier of the silo.",
+			},
+			"identity_mode": schema.StringAttribute{
+				Description: "How users and groups are managed in the Silo",
+				Computed:    true,
+				Default:     stringdefault.StaticString(string(oxide.SiloIdentityModeLocalOnly)),
+				Validators: []validator.String{
+					stringvalidator.OneOf(
+						string(oxide.SiloIdentityModeLocalOnly),
+						string(oxide.SiloIdentityModeSamlJit),
+					),
+				},
 			},
 		},
 	}
