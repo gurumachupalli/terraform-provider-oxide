@@ -7,8 +7,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 
 	// "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
@@ -183,6 +185,10 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 							PlanModifiers: []planmodifier.String{
 								stringplanmodifier.RequiresReplace(),
 							},
+							Validators: []validator.String{
+								stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-]+$`),
+									"allowed characters are lowercase ASCII, digits, and \"-\""),
+							},
 						},
 						"service": schema.StringAttribute{
 							Description: "Service using this certificate.",
@@ -192,6 +198,9 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 							},
 						},
 					},
+				},
+				Validators: []validator.List{
+					listvalidator.SizeAtLeast(1),
 				},
 			},
 			"timeouts": timeouts.Attributes(ctx, timeouts.Opts{
@@ -228,7 +237,7 @@ func (r *siloResource) Schema(ctx context.Context, _ resource.SchemaRequest, res
 }
 
 func siloCreateMappedFleetRolesModel(mappedFleetRoles map[string][]string) map[string][]oxide.FleetRole {
-	var model map[string][]oxide.FleetRole = make(map[string][]oxide.FleetRole)
+	model := make(map[string][]oxide.FleetRole)
 
 	for key, fleetRoleModels := range mappedFleetRoles {
 		var roles []oxide.FleetRole
@@ -255,8 +264,8 @@ func newTlsCertificates(tlsCertificates []certificateCreateModel) []oxide.Certif
 		r := oxide.CertificateCreate{
 			Cert:        tlsCert.Cert.ValueString(),
 			Description: tlsCert.Description.ValueString(),
-			Key:         tlsCert.Cert.ValueString(),
-			Name:        oxide.Name(tlsCert.Cert.ValueString()),
+			Key:         tlsCert.Key.ValueString(),
+			Name:        oxide.Name(tlsCert.Name.ValueString()),
 			Service:     oxide.ServiceUsingCertificate(tlsCert.Service.ValueString()),
 		}
 
@@ -296,6 +305,7 @@ func (r *siloResource) Create(ctx context.Context, req resource.CreateRequest, r
 			TlsCertificates:  newTlsCertificates(plan.TlsCertificates),
 		},
 	}
+	tflog.Debug(ctx, fmt.Sprintf("Silo creation parameters: %+v", params.Body.TlsCertificates), nil)
 	silo, err := r.client.SiloCreate(ctx, params)
 	if err != nil {
 		resp.Diagnostics.AddError(
