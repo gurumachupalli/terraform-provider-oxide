@@ -16,8 +16,8 @@ import (
 )
 
 type resourceSiloConfig struct {
-	BlockName		string
-	SiloName 		string
+	BlockName string
+	SiloName  string
 }
 
 var resourceSiloConfigTpl = `
@@ -28,8 +28,8 @@ resource "oxide_silo" "{{.BlockName}}" {
 	identity_mode 			= "saml_jit"
 	discoverable 			= true
 	mapped_fleet_roles 		= {
-		fleetkey1		 	= ["admin", "collaborator"]
-		fleetkey2		 	= ["viewer"]
+		admin  = ["admin", "collaborator"]
+		viewer = ["viewer"]
 	}
 	quotas 					= {
 		cpus 				= 8
@@ -61,8 +61,8 @@ func TestAccCloudResourceSilo_full(t *testing.T) {
 
 	config, err := parsedAccConfig(
 		resourceSiloConfig{
-			BlockName: 	blockName,
-			SiloName: 	siloName,
+			BlockName: blockName,
+			SiloName:  siloName,
 		},
 		resourceSiloConfigTpl,
 	)
