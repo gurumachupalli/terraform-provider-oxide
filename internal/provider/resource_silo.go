@@ -12,9 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-
-	// "github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
-
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -25,7 +22,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	// "github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/oxidecomputer/oxide.go/oxide"
 )
@@ -47,12 +43,11 @@ type siloResource struct {
 }
 
 type siloResourceModel struct {
-	AdminGroupName types.String `tfsdk:"admin_group_name"`
-	Description    types.String `tfsdk:"description"`
-	Discoverable   types.Bool   `tfsdk:"discoverable"`
-	ID             types.String `tfsdk:"id"`
-	IdentityMode   types.String `tfsdk:"identity_mode"`
-	// MappedFleetRoles types.Map					 `tfsdk:"mapped_fleet_roles"`
+	AdminGroupName   types.String             `tfsdk:"admin_group_name"`
+	Description      types.String             `tfsdk:"description"`
+	Discoverable     types.Bool               `tfsdk:"discoverable"`
+	ID               types.String             `tfsdk:"id"`
+	IdentityMode     types.String             `tfsdk:"identity_mode"`
 	MappedFleetRoles map[string][]string      `tfsdk:"mapped_fleet_roles"`
 	Name             types.String             `tfsdk:"name"`
 	Quotas           quotaResourceModel       `tfsdk:"quotas"`
